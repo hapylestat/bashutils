@@ -1,0 +1,1 @@
+system.conf should be located at /etc/system.conf

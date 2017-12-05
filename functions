@@ -1,0 +1,100 @@
+#!/bin/bash
+#0. VARIABLES
+#=====bash color constants
+CORENAME="BashLib"
+COREVER="0.3a"
+#=====variables
+#stop executing script on error appears
+sSTOP=0
+sSTOP_TRY=0
+#set to 1, to eit on first error
+EXITONERROR=0
+
+### check bash version ###
+if ((${BASH_VERSINFO[0]} < 4)); then
+    echo "Sorry, but supported only bash version 4.x.x and higher"
+    exit 1
+fi
+####################################
+
+#checking required variables, try to guess defaults if nothing was set
+if [ -z $FILENAME ]; then
+ FILENAME=$(basename $0)
+fi
+
+if [ -z $MYDIR ]; then
+  MYDIR=$0 && MYREALDIR=$(readlink $MYDIR)
+  if [ ! -z $MYREALDIR ]; then
+    FILENAME=$(basename $MYREALDIR) &&  MYDIR=$MYREALDIR
+  fi;
+  MYDIR=${MYDIR%%/$FILENAME}
+fi
+
+if [ -z $APPVER ]; then
+  APPVER="<not set>"
+fi
+
+#1. BASE FUNCTIONALITY
+#########################signal handling
+control_c(){
+  echo "Catching SIGINT..."
+  sSTOP_TRY=$((sSTOP_TRY+1))
+  sSTOP=1
+  if [ $sSTOP_TRY -gt 1 ]; then #application hanging up?
+    echo "!! Script hangs? Self-killing..."
+    exit 1
+  fi
+}
+
+trap control_c SIGINT
+###########################/signal handling
+
+#  Include script to base file (safe function)
+# $1 - file
+include(){
+  #pre-proccessing
+  DATA=${@//./\/}     #unmask net.test.section -> net/test/section
+  DATA=${DATA//,/\ }  #convert system.io, system.terminal -> system.io system.terminal
+  DATA=${DATA//\ \ /\ } #cleanup, remove double spaces
+
+  for item in $DATA;do
+   #check, if we do not include a called file
+    if [ "$FILENAME" == "$item" ]; then
+     echo "Item \"$item\" can't be included itself"
+     exit 1
+    fi
+   #check lib dir first, it is some standart lib?
+    if [ -f $libROOT/includes/$item ]; then
+     source $libROOT/includes/$item
+    elif [ -f $MYDIR/$item ]; then
+     source $MYDIR/$item
+    else
+     if [ -f $item ]; then
+      source $item
+     else
+      echo "Item \"$item\" not found"
+      exit 1
+     fi
+    fi
+  done
+}
+
+# echo string without EOL
+# $1 - string to echo
+return_s(){
+ echo -n "$1"
+}
+
+
+#switch/restore bash delimiter 
+# $1 new delimiter or blank
+switch_delimiter(){
+ if [ -z "$1" ]; then
+   IFS=$IFS_TMP
+ else
+   IFS_TMP=$IFS
+   IFS=$1
+ fi
+}
+
+

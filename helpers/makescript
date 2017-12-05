@@ -1,0 +1,48 @@
+#!/bin/bash
+######################################
+#            Shell script            #
+# Author: H.L.                       #
+# TPL Version: 0.1                   #
+######################################
+
+#========================Global variables
+APPVER="0.1b"
+
+
+MYDIR=$0 && FILENAME=$(basename $MYDIR) && MYREALDIR=$(readlink $MYDIR)
+if [ ! -z $MYREALDIR ]; then FILENAME=$(basename $MYREALDIR) &&  MYDIR=$MYREALDIR; fi;
+MYDIR=${MYDIR%%/$FILENAME}
+
+# use that to interupt execution of script on error
+#EXITONERROR=1
+#=======================Include base library
+#hack, to allow work that without system.conf
+libROOT=$MYDIR/../
+. $MYDIR/../functions
+
+include terminal, system, filesystem, lib.system.args
+
+FILENAME=""
+
+if [ -z ${ARGS["default"]} ];then
+ read -p "New file name(press ENTER without typing to cancel): " FILENAME
+ if [ -z $FILENAME ]; then
+   write_info "Syntax: $FILENAME <filename>"
+  exit 1
+ fi
+else 
+ FILENAME=${ARGS["default"]}
+fi
+
+TLIST=$(dirlist "$MYDIR/templates" ".")
+ITEM=0
+write_header  "Available templates:"
+for item in $TLIST; do
+write_item "$ITEM" "$item"
+LIST[$ITEM]=$item
+ITEM=$(( $ITEM+1 ))
+done
+read -p "Select:" ITEM
+
+run "cp -f $MYDIR/templates/${LIST[$ITEM]} $PWD/$FILENAME" "Create script from template"
+run "chmod u+x $PWD/$FILENAME" "Apply execute permissions"

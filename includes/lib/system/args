@@ -1,0 +1,141 @@
+#!/bin/bash
+
+include strings
+#Some samples:
+#-iterate throught array and output keys
+#for item in ${!ARGS[@]}; do
+# echo $item
+#done
+#
+#-check switch element -a
+# if [ ! -z ${ARGS["a"]} ]; then
+#      some actions
+# fi
+
+#
+#Parse command line
+#
+parseArgs(){
+ #global declaration
+ declare -gA ARGS
+ declare -gA ARGS_HELP
+
+ ARGS["default"]=""
+ ARGV=(${BASH_ARGV[*]})
+ unset ARGV[0]
+
+ if [ ${#ARGV[@]} -lt 1 ]; then
+  return 0
+ fi
+
+ for item in ${ARGV[@]}; do
+  if [[ $item =~ ^-- ]]; then  # mydata="some value"
+    item=${item:2}
+    name=${item%=*}
+    value=${item#*=}
+    ARGS["${name,,}"]=$value
+  elif [[ $item =~ ^- ]]; then  # -v
+    ARGS["${item:1}"]="1"
+  else
+     ARGS["default"]=" $item${ARGS["default"]}"
+  fi
+ done
+  ARGS["default"]=${ARGS["default"]:1}
+}
+
+# $1 arg name
+# $2 arg description
+# $3, $4 arg is optional
+addArgument(){
+  name=$1
+  desc=$2
+  opt=0
+  var=0
+  sw=0
+  if [ ! -z "${ARGS_HELP[$1]}" ]; then
+    echo "Error, param \"$1\" allready exists"
+    exit 1
+  fi
+  if [ "$3" == "opt" ] || [ "$4" == "opt" ]; then opt=1;  fi
+  if [ "$3" == "var" ] || [ "$4" == "var" ]; then var=1;  fi
+  if [ "$3" == "sw" ] || [ "$4" == "sw" ]; then sw=1;  fi
+
+  ARGS_HELP["$name"]="$desc;$opt;$var;$sw"
+}
+
+# How to use
+#=================
+# 1. declare function
+# init_help(){
+#  addArgument "module" "module name to test" "var"
+#  addArgument "full" "execute full set of tests" "opt"
+#  addArgument "X" "enable eXtended/debug output" "opt"
+#  addArgument "list" "list of available modules" "opt"
+#  addArgument "test" "test package"
+#  addArgument "list" "test package"
+#}
+#
+#2. bind to handler
+#  export ON_HELP=init_help
+#
+#3. Call help output when needed
+# listHelp
+
+listHelp(){
+  if [ -z $ON_HELP ]; then
+    echo "Error. Please, define first argument handler via export ON_HELP=<function to fill arguments>"
+    exit 1
+  fi
+  "$ON_HELP"
+  LEFTSPACE="\t"
+  TOPLINE=""
+  TOPLINE_LEFT="$FILENAME, $APPVER\n"
+  TOPLINE_LEFT="${TOPLINE}Usage: $FILENAME"
+  MAINSWITCH=""
+  CONTENT=""
+
+  for item in ${!ARGS_HELP[@]}; do
+      desc=$(str_item "${ARGS_HELP[$item]}" ";" "1")
+      opt=$(str_item "${ARGS_HELP[$item]}" ";" "2")
+      var=$(str_item "${ARGS_HELP[$item]}" ";" "3")
+      sw=$(str_item "${ARGS_HELP[$item]}" ";" "4")
+
+      CONTENT="$CONTENT$LEFTSPACE"
+
+      if [ "$opt" == "1" ]; then TOPLINE="$TOPLINE["; fi
+      if [ "$var" == "1" ]; then
+        TOPLINE="$TOPLINE--$item=$desc"
+        CONTENT="$CONTENT--$item"
+      fi
+      
+      if [ "$opt" == "1" ] && [ "$sw" == 0 ]; then
+       TOPLINE="$TOPLINE--$item=<$item>"
+       CONTENT="$CONTENT$item";
+      fi
+
+      if [ "$sw" == "1" ]; then
+        TOPLINE="$TOPLINE-$item"
+        CONTENT="$CONTENT-$item"
+      fi
+      if [ "$opt" == "1" ]; then TOPLINE="$TOPLINE]"; fi
+
+      if [ "$opt" == "0" ] && [ "$var" == "0" ] && [ "$sw" == "0" ]; then
+        MAINSWITCH="$MAINSWITCH$item|"
+         CONTENT="$CONTENT$item"
+      else
+        TOPLINE="$TOPLINE "
+      fi
+
+      CONTENT="$CONTENT - $desc\n"
+  done
+
+  if [ "$MAINSWITCH" == "" ]; then
+    echo -e "$TOPLINE_LEFT $TOPLINE\n"
+  else
+    echo -e "$TOPLINE_LEFT {${MAINSWITCH%?}} $TOPLINE\n"
+  fi
+  echo -e "$CONTENT"
+}
+
+#parse script arguments
+parseArgs

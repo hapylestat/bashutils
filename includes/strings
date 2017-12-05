@@ -1,0 +1,29 @@
+#!/bin/bash
+
+
+# => get string item by delimiter
+# $1 - string
+# $2 - delimiter
+# $3 - item num
+str_item(){
+  temp=$(echo $1)
+  out="none"
+  delim=$2
+  cnt=0
+  while [ $cnt -lt $3 ]; do
+   out=${temp%%$delim*}
+   temp=${temp#*$delim}
+   let cnt=cnt+1
+  done
+  echo $out
+}
+
+# echo -e "\0342\0234\0223" - prints check
+print_check(){
+  echo -ne "\0342\0234\0223"
+}
+
+# echo -e "\0342\0234\0227" - prints cross
+print_cross(){
+  echo -ne "\0342\0234\0227"
+}
